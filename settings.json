@@ -1,0 +1,18 @@
+{
+  "system": {
+    "token": "7157077104:AAHt6xzNaHHba8-FaVq1Iox-3AP2goLxKe8",
+    "commands_dir": "commands",
+    "prefix": "/"
+  },
+  "commands": {
+    "ping": "ping.py",
+    "test": "test.py",
+    "test2": "test2.py",
+    "start": "start.py",
+    "callback_help": "C_help.py"
+  },
+  "text": {
+   "start": "Telegram Quest Bot\nСоздать свою комнату -> нажмите 'Создать комнату'\n Присоединиться к комнате -> нажмите 'Присоединиться'\n Получить дополнительную справку -> 'Помощь'",
+    "help": "Помощь по боту:"
+  }
+}
