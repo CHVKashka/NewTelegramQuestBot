@@ -1,6 +1,5 @@
 from telebot import types
-def handle_command(message,user,args):
+def handle_command(message, bot, data,command_list, args):
     markup=types.InlineKeyboardMarkup()
     markup.add(types.InlineKeyboardButton('ping',callback_data='ping'))
-    user.sendMessage('pong',markups=markup)
-    #bot.send_message(message.chat.id, 'pong',reply_to_message_id=message.message_id,reply_markup=murkup)
+    bot.send_message(message.chat.id,'ping',reply_markup=markup)

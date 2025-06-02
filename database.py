@@ -1,8 +1,8 @@
 import sqlite3
 import threading
 from contextlib import contextmanager
-from enum import UNIQUE
-from typing import Any, Dict, Iterator, List, Optional, Tuple
+from typing import Iterator
+
 from utils import log
 
 
@@ -19,31 +19,27 @@ class SQLiteDatabase:
             # Таблица пользователей с колонками ключ-значение
             cursor.execute("""
                 CREATE TABLE IF NOT EXISTS Users (
-                    userid INTEGER NOT NULL,
+                    user_id INTEGER NOT NULL,
                     username TEXT NOT NULL,
-                    session INTEGER,
+                    session_id INTEGER,
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                    PRIMARY KEY (userid)
-                )
-            """)
+                    PRIMARY KEY (user_id)
+            )""")
 
             # Таблица сообщений
             cursor.execute("""
                 CREATE TABLE IF NOT EXISTS Messages (
-                    messageid INTEGER PRIMARY KEY AUTOINCREMENT,
-                    userid INTEGER NOT NULL
-                )
-            """)
+                    message_id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    user_id INTEGER NOT NULL
+            )""")
             cursor.execute("""
                    CREATE TABLE IF NOT EXISTS Sessions (
-                       sessionid INTEGER PRIMARY KEY,
-                       registration INTEGER DEFAULT 0,
-                       data TEXT
-                   )
-               """)
-
-
+                       session_id INTEGER PRIMARY KEY,
+                       session_code TEXT NOT NULL,
+                       reg_requier INTEGER DEFAULT 0,
+                       allow_team INTEGER DEFAULT 0
+               )""")
 
             # Включаем WAL режим для конкурентного доступа
             cursor.execute("PRAGMA journal_mode=WAL;")
@@ -67,88 +63,96 @@ class SQLiteDatabase:
             self.local.conn.rollback()
             raise e
 
-    def addUser(self,userid,username):
+    def addUser(self, user_id, username):
         try:
             with self.connection() as cursor:
-                cursor.execute(f'INSERT INTO Users (userid,username) VALUES (?,?)',(userid,username,))
+                cursor.execute(f'INSERT INTO Users (user_id,username) VALUES (?,?)', (user_id, username,))
         except Exception as error:
             if "UNIQUE" in str(error):
-                log(f'Ошибка добавления пользователя {userid}: пользователь уже существует', 'Database', 'strong')
+                log(f'Ошибка добавления пользователя {user_id}: пользователь уже существует', 'Database', 'strong')
             else:
                 print(error)
-                log(f'Ошибка добавления пользователя {userid}: {error}', 'Database', 'error')
+                log(f'Ошибка добавления пользователя {user_id}: {error}', 'Database', 'error')
 
-    def updateUser(self,userid,data):
+    def updateUser(self, user_id, data):
         try:
             with self.connection() as cursor:
-                cursor.execute(f'SELECT 1 FROM Users WHERE userid = ?',(userid,))
-                exists=cursor.fetchone()
+                cursor.execute(f'SELECT 1 FROM Users WHERE user_id = ?', (user_id,))
+                exists = cursor.fetchone()
 
                 if exists:
-                    for key,val in data.items():
-                        cursor.execute(f"UPDATE Users SET {key} = ? WHERE userid=?",(val,userid))
+                    for key, val in data.items():
+                        cursor.execute(f"UPDATE Users SET {key} = ? WHERE user_id=?", (val, user_id))
                 else:
-                    log(f'Пользователя {userid} не существует','Database','strong')
+                    log(f'Пользователя {user_id} не существует', 'Database', 'strong')
         except Exception as error:
-            log(f'Ошибка обновления данных пользователя {userid}: {error}','Database','error')
+            log(f'Ошибка обновления данных пользователя {user_id}: {error}', 'Database', 'error')
 
-    def getUser(self,userid=None):
-        if userid:
+    def getUser(self, user_id=None):
+        if user_id:
             with self.connection() as cursor:
-                cursor.execute('SELECT * FROM Users WHERE userid = ?',(userid,))
+                cursor.execute('SELECT * FROM Users WHERE user_id = ?', (user_id,))
                 return [dict(row) for row in cursor.fetchall()]
         else:
             with (self.connection() as cursor):
                 cursor.execute('SELECT * FROM Users')
                 return [dict(row) for row in cursor.fetchall()]
 
-    def addMessage(self,messageid,userid):
+    def addMessage(self, message_id, user_id):
         with self.connection() as cursor:
             try:
-                cursor.execute('INSERT INTO Messages (messageid,userid) VALUES (?,?)',(messageid,userid))
+                cursor.execute('INSERT INTO Messages (message_id,user_id) VALUES (?,?)', (message_id, user_id))
             except Exception as error:
-                log(f'Ошибка {error} при добавлении сообщения {messageid} к {userid}','Database','error')
+                log(f'Ошибка {error} при добавлении сообщения {message_id} к {user_id}', 'Database', 'error')
 
-    def getMessages(self,userid=None):
+    def getMessages(self, user_id=None):
         try:
             with self.connection() as cursor:
-                if userid:
-                    cursor.execute(f'SELECT 1 FROM Messages WHERE messageid = ?', (userid,))
+                if user_id:
+                    cursor.execute(f'SELECT 1 FROM Messages WHERE message_id = ?', (user_id,))
                     return cursor.fetchone()
                 else:
-                    cursor.execute(f'SELECT * FROM Messages WHERE messageid = ?', (userid,))
+                    cursor.execute(f'SELECT * FROM Messages WHERE message_id = ?', (user_id,))
                     return cursor.fetchall()
         except Exception as error:
-            log(f'Ошибка {error} при получении сообщений пользователем {userid}','Database','error')
+            log(f'Ошибка {error} при получении сообщений пользователем {user_id}', 'Database', 'error')
             return None
 
-    def removeMessages(self,userid,messageid=None):
+    def removeMessages(self, user_id, message_id=None):
         try:
             with self.connection() as cursor:
-                if messageid:
-                    cursor.execute(f"DELETE FROM Messages WHERE {userid}=?,{messageid}=?",(userid,messageid))
+                if message_id:
+                    cursor.execute(f"DELETE FROM Messages WHERE {user_id}=?,{message_id}=?", (user_id, message_id))
                 else:
-                    cursor.execute(f"DELETE FROM Messages WHERE {userid}=?", (userid,))
+                    cursor.execute(f"DELETE FROM Messages WHERE {user_id}=?", (user_id,))
         except Exception as error:
-            log(f'Ошибка {error} при удаления сообщений пользователем {userid}', 'Database', 'error')
+            log(f'Ошибка {error} при удаления сообщений пользователем {user_id}', 'Database', 'error')
 
-
-
-    def createSession(self,sesionid):
+    def createSession(self,session_id, user_id,username):
         with self.connection() as cursor:
             cursor.execute(f"""
-                CREATE TABLE IF NOT EXISTS Sessions_{sesionid} (
-                   userid INTEGER PRIMARY NOT NULL,
+                CREATE TABLE IF NOT EXISTS Session_{session_id} (
+                   user_id INTEGER PRIMARY NOT NULL,
                    username TEXT NOT NULL,
-                   complite TEXT NOT NULL,
-                   score INTEGER NOT NULL
+                   team TEXT,
+                   complite TEXT,
+                   score INTEGER NOT NULL,
+                   is_admin INTEGER NOT NULL
                )
            """)
+            cursor.execute(
+                f"INSERT INTO Session_{session_id} (user_id,username,score,is_admin) VALUES (?,?,?,?)",
+                (user_id,username,0,1))
+            cursor.execute(f"INSERT INTO Sessions (session_id,session_code,reg_requier,allow_team) VALUES (?,?,?,?,?)",
+                           (session_id, 0, 0, None))
 
+    def removeSesion(self,session_id):
+        with self.connection() as cursor:
+            cursor.execute(f"DELETE FROM Sessions WHERE session_id=?",(session_id,))
+            sessionTable=f"Session_{session_id}"
+            cursor.execute(f"DROP TABLE {sessionTable}")
 
-
-
-
-
-
-
+    def getSessionList(self):
+        with self.connection() as cursor:
+            cursor.execute(f'SELECT * FROM Sessions')
+            return [dict(row) for row in cursor.fetchall()]

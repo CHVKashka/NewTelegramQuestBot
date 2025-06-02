@@ -1,4 +1,3 @@
-def handle_command(message,user,args):
-    #bot.send_message(message.chat.id, message,reply_to_message_id=message.message_id)
-    user.sendMessage('Введите сообщение:')
-    user.awaitUserMessage(message,'test2',user,args)
+def handle_command(message, bot, data,command_list, args):
+    bot.send_message(message.chat.id, 'Введите сообщение:')
+    bot.register_next_step_handler(message,command_list.get('test2'),bot,data,command_list,args)

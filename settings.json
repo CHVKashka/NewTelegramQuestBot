@@ -9,7 +9,8 @@
     "test": "test.py",
     "test2": "test2.py",
     "start": "start.py",
-    "callback_help": "C_help.py"
+    "callback_help": "C_help.py",
+    "callback_create_session": "C_create_session.py"
   },
   "text": {
    "start": "Telegram Quest Bot\nСоздать свою комнату -> нажмите 'Создать комнату'\n Присоединиться к комнате -> нажмите 'Присоединиться'\n Получить дополнительную справку -> 'Помощь'",

@@ -1,5 +1,6 @@
 import colorama
 from datetime import datetime
+import random
 
 def time(format='time'):
     now = datetime.now()
@@ -20,4 +21,11 @@ def log(txt,author,color='log'):
         case 'done': print(f"{colorama.Fore.GREEN}{txt}{colorama.Fore.RESET}")
         case 'system': print(f"{colorama.Fore.BLUE}{txt}{colorama.Fore.RESET}")
 
+def char_sequence(count:int):
+    sequence=''
+    for i in range(int(count/2)):
+        letter=chr(random.randint(97,122))
+        number=chr(random.randint(48,57))
+        sequence=sequence+letter+number
+    return sequence
 
