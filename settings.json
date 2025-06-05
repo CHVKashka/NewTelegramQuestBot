@@ -10,10 +10,18 @@
     "test2": "test2.py",
     "start": "start.py",
     "callback_help": "C_help.py",
-    "callback_create_session": "C_create_session.py"
+    "callback_create_session": "C_create_session.py",
+    "callback_exit_session": "exit_session.py",
+    "callback_join_session": "join_session.py",
+    "callback_delete_session": "delete_session.py",
+    "session": "debug_session.py",
+    "session_menu": "session_menu.py"
+
   },
   "text": {
    "start": "Telegram Quest Bot\nСоздать свою комнату -> нажмите 'Создать комнату'\n Присоединиться к комнате -> нажмите 'Присоединиться'\n Получить дополнительную справку -> 'Помощь'",
-    "help": "Помощь по боту:"
+    "help": "Помощь по боту:",
+    "session_menu_redact": "Открыта панель редактирования сессии",
+    "session_menu_view": "Меню Сессии"
   }
 }

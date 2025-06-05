@@ -29,3 +29,13 @@ def char_sequence(count:int):
         sequence=sequence+letter+number
     return sequence
 
+def selector(data,select):
+    for elem in data:
+        print(elem)
+        for key,val in select.items():
+            if elem.get(key)==val:
+                return elem
+                break
+
+
+

@@ -22,6 +22,8 @@ class SQLiteDatabase:
                     user_id INTEGER NOT NULL,
                     username TEXT NOT NULL,
                     session_id INTEGER,
+                    opened_menu TEXT NOT NULL,
+                    menu_id INTEGER NOT NULL,
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                     PRIMARY KEY (user_id)
@@ -63,10 +65,12 @@ class SQLiteDatabase:
             self.local.conn.rollback()
             raise e
 
-    def addUser(self, user_id, username):
+    def addUser(self, user_id, username,menu_id):
         try:
             with self.connection() as cursor:
-                cursor.execute(f'INSERT INTO Users (user_id,username) VALUES (?,?)', (user_id, username,))
+                cursor.execute(
+                    f'INSERT INTO Users (user_id,username,session_id,opened_menu,menu_id) VALUES (?,?,?,?,?)',
+                    (user_id, username, 0,'start',menu_id))
         except Exception as error:
             if "UNIQUE" in str(error):
                 log(f'Ошибка добавления пользователя {user_id}: пользователь уже существует', 'Database', 'strong')
@@ -86,6 +90,7 @@ class SQLiteDatabase:
                 else:
                     log(f'Пользователя {user_id} не существует', 'Database', 'strong')
         except Exception as error:
+            raise error
             log(f'Ошибка обновления данных пользователя {user_id}: {error}', 'Database', 'error')
 
     def getUser(self, user_id=None):
@@ -128,11 +133,11 @@ class SQLiteDatabase:
         except Exception as error:
             log(f'Ошибка {error} при удаления сообщений пользователем {user_id}', 'Database', 'error')
 
-    def createSession(self,session_id, user_id,username):
+    def createSession(self, session_id, session_code, user_id, username):
         with self.connection() as cursor:
             cursor.execute(f"""
                 CREATE TABLE IF NOT EXISTS Session_{session_id} (
-                   user_id INTEGER PRIMARY NOT NULL,
+                   user_id INTEGER PRIMARY KEY NOT NULL,
                    username TEXT NOT NULL,
                    team TEXT,
                    complite TEXT,
@@ -142,17 +147,52 @@ class SQLiteDatabase:
            """)
             cursor.execute(
                 f"INSERT INTO Session_{session_id} (user_id,username,score,is_admin) VALUES (?,?,?,?)",
-                (user_id,username,0,1))
-            cursor.execute(f"INSERT INTO Sessions (session_id,session_code,reg_requier,allow_team) VALUES (?,?,?,?,?)",
-                           (session_id, 0, 0, None))
+                (user_id, username, 0, 2))
+            cursor.execute(f"INSERT INTO Sessions (session_id,session_code) VALUES (?,?)",
+                           (session_id, session_code))
+            self.updateUser(user_id, {"session_id": session_id})
 
-    def removeSesion(self,session_id):
+    def joinSession(self,session_id,user_id,username):
         with self.connection() as cursor:
-            cursor.execute(f"DELETE FROM Sessions WHERE session_id=?",(session_id,))
-            sessionTable=f"Session_{session_id}"
+            try:
+                cursor.execute(
+                    f"INSERT INTO Session_{session_id} (user_id,username,score,is_admin) VALUES (?,?,?,?)",
+                    (user_id, username, 0, 0))
+                return 0
+            except Exception as error:
+                log(f'Ошибка {error} при присоединении к сессии {session_id}', 'Database', 'error')
+                return 1
+
+    def leaveSession(self,session_id,user_id):
+        with self.connection() as cursor:
+            try:
+                cursor.execute(f"DELETE FROM Session_{session_id} WHERE user_id=?",(user_id,))
+                self.updateUser(user_id,{'session_id':0})
+                #cursor.execute(f"DELETE FROM Messages WHERE {user_id}=?", (user_id,))
+            except Exception as error:
+                log(f"Ошибка выхода пользователя {user_id} из сессии {session_id}")
+
+    def removeSession(self, session_id):
+        with self.connection() as cursor:
+            users = self.getSessionData(session_id)
+            for user in users:
+                self.updateUser(int(user["user_id"]), {"session_id": 0})
+            cursor.execute(f"DELETE FROM Sessions WHERE session_id=?", (session_id,))
+            sessionTable = f"Session_{session_id}"
             cursor.execute(f"DROP TABLE {sessionTable}")
 
     def getSessionList(self):
         with self.connection() as cursor:
             cursor.execute(f'SELECT * FROM Sessions')
             return [dict(row) for row in cursor.fetchall()]
+
+    def getSessionData(self, session_id):
+        with self.connection() as cursor:
+            cursor.execute(f"SELECT * FROM Session_{session_id}")
+            return [dict(row) for row in cursor.fetchall()]
+
+    def FindInSession(self,session_id,user_id):
+        with self.connection() as cursor:
+            cursor.execute(f"SELECT * FROM Session_{session_id} WHERE user_id=?",(user_id,))
+            return  [dict(row) for row in cursor.fetchall()][0]
+
